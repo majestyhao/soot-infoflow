@@ -188,6 +188,7 @@ public class InfoflowProblem extends AbstractInfoflowProblem {
 				
 				if (newAbs != null) {
 					taintSet.add(newAbs);
+					logger.debug("Hao newABs: " + newAbs);
 					if (aliasing.canHaveAliases(assignStmt, leftValue, newAbs))
 						aliasing.computeAliases(d1, assignStmt, leftValue, taintSet,
 								method, newAbs);

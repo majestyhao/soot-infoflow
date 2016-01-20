@@ -21,6 +21,7 @@ import soot.jimple.infoflow.ipc.IIPCManager;
 import soot.jimple.infoflow.nativ.INativeCallHandler;
 import soot.jimple.infoflow.results.InfoflowResults;
 import soot.jimple.infoflow.source.ISourceSinkManager;
+import soot.jimple.infoflow.source.data.ISourceSinkDefinitionProvider;
 import soot.jimple.infoflow.taintWrappers.ITaintPropagationWrapper;
 /**
  * interface for the main infoflow class
@@ -129,6 +130,10 @@ public interface IInfoflow {
 	public void computeInfoflow(String appPath, String libPath,
 			IEntryPointCreator entryPointCreator,
 			ISourceSinkManager sourcesSinks);
+	
+	public void computeInfoflow(String appPath, String libPath,
+			IEntryPointCreator entryPointCreator,
+			ISourceSinkManager sourcesSinks, ISourceSinkDefinitionProvider sourceSinkProvider);
 
 	/**
 	 * Computes the information flow on a single method. This method is

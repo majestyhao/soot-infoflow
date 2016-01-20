@@ -152,6 +152,7 @@ public class ContextSensitivePathBuilder extends AbstractAbstractionPathBuilder 
 		
 		// Register the source that we have found
 		SourceContext sourceContext = abs.getSourceContext();
+		try {
 		results.addResult(scap.getAccessPath(),
 				scap.getStmt(),
 				sourceContext.getAccessPath(),
@@ -159,6 +160,11 @@ public class ContextSensitivePathBuilder extends AbstractAbstractionPathBuilder 
 				sourceContext.getUserData(),
 				scap.getAbstractionPath());
 		return true;
+		} catch (Exception e) {
+			logger.error(scap.getStmt().toString());
+			logger.error(e.getStackTrace().toString());
+			return false;
+		}
 	}
 	
 	@Override

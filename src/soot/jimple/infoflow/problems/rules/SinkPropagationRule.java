@@ -2,6 +2,7 @@ package soot.jimple.infoflow.problems.rules;
 
 import java.util.Collection;
 
+import soot.SootMethod;
 import soot.Value;
 import soot.jimple.AssignStmt;
 import soot.jimple.IfStmt;
@@ -16,6 +17,7 @@ import soot.jimple.infoflow.aliasing.Aliasing;
 import soot.jimple.infoflow.data.Abstraction;
 import soot.jimple.infoflow.data.AbstractionAtSink;
 import soot.jimple.infoflow.problems.TaintPropagationResults;
+import soot.jimple.infoflow.source.data.SourceSinkDefinition;
 import soot.jimple.infoflow.util.BaseSelector;
 import soot.jimple.infoflow.util.ByReferenceBoolean;
 
@@ -29,6 +31,27 @@ public class SinkPropagationRule extends AbstractTaintPropagationRule {
 	public SinkPropagationRule(InfoflowManager manager, Aliasing aliasing,
 			Abstraction zeroValue, TaintPropagationResults results) {
 		super(manager, aliasing, zeroValue, results);
+	}
+	
+	public boolean checkSrc(Abstraction source) {
+		if (source.getSourceContext() != null) {
+			//System.out.println("Hao src: " + source.getSourceContext().getStmt());
+			//System.out.println("" + getManager().getSourceSinkManager().
+					//getSourceInfo(source.getSourceContext().getStmt(), getManager().getICFG()));
+			if (source.getSourceContext().getStmt().containsInvokeExpr()) {
+				SootMethod method = source.getSourceContext().getStmt().getInvokeExpr().getMethod();
+				//System.out.println("Hao src: " + source.getSourceContext().getStmt().getInvokeExpr().getMethod());
+				for (SourceSinkDefinition am : getManager().getSourceSinkProvider().getSources()) {
+					if (am.toString().equals(method.getSignature())) {
+						//System.out.println("HEREH " + am.toString());
+						return true;
+					}
+				}			
+			}		
+			System.out.println("Hao src: " + source.getSourceContext().getStmt());
+		}
+	
+		return false;
 	}
 
 	@Override
@@ -60,7 +83,7 @@ public class SinkPropagationRule extends AbstractTaintPropagationRule {
 	}
 	
 	/**
-	 * Checks whether the given taint abstraction at the given satement triggers
+	 * Checks whether the given taint abstraction at the given statement triggers
 	 * a sink. If so, a new result is recorded
 	 * @param d1 The context abstraction
 	 * @param source The abstraction that has reached the given statement
@@ -73,12 +96,15 @@ public class SinkPropagationRule extends AbstractTaintPropagationRule {
 		// every simple value contained within it.
 		for (Value val : BaseSelector.selectBaseList(retVal, false)) {
 			if (getManager().getSourceSinkManager() != null
-					&& source.isAbstractionActive()
-					&& getAliasing().mayAlias(val, source
-							.getAccessPath().getPlainValue())
-					&& getManager().getSourceSinkManager().isSink(stmt,
-							getManager().getICFG(), source.getAccessPath()))
+					 && source.isAbstractionActive()
+					 && getAliasing().mayAlias(val, source
+							.getAccessPath().getPlainValue())){
+					//&& getManager().getSourceSinkManager().isSink(stmt,
+					//		getManager().getICFG(), source.getAccessPath())) {
+					 //&& checkSrc(source)){
 				getResults().addResult(new AbstractionAtSink(source, stmt));
+			}
+			//getResults().addResult(new AbstractionAtSink(source, stmt));
 		}
 	}
 
@@ -114,11 +140,15 @@ public class SinkPropagationRule extends AbstractTaintPropagationRule {
 
 			// Is this a call to a sink?
 			if (found
-					&& getManager().getSourceSinkManager() != null
-					&& getManager().getSourceSinkManager().isSink(stmt,
-							getManager().getICFG(), source.getAccessPath())) {
+					&& getManager().getSourceSinkManager() != null){
+					//&& getManager().getSourceSinkManager().isSink(stmt,
+							//getManager().getICFG(), source.getAccessPath())) {
+					//&& checkSrc(source)){
+				// Hao: 
 				getResults().addResult(new AbstractionAtSink(source, stmt));
 			}
+			//Hao: add here
+			//getResults().addResult(new AbstractionAtSink(source, stmt));
 		}
 
 		return null;
@@ -137,10 +167,13 @@ public class SinkPropagationRule extends AbstractTaintPropagationRule {
 					&& source.isAbstractionActive()
 					&& getManager().getSourceSinkManager() != null
 					&& getAliasing().mayAlias(source.getAccessPath().getPlainValue(),
-							returnStmt.getOp())
-					&& getManager().getSourceSinkManager().isSink(returnStmt,
-							getManager().getICFG(), source.getAccessPath()))
+							returnStmt.getOp())){
+					//&& getManager().getSourceSinkManager().isSink(returnStmt,
+							//getManager().getICFG(), source.getAccessPath())) {
+					 //&& checkSrc(source)){
 				getResults().addResult(new AbstractionAtSink(source, returnStmt));
+			}
+			//getResults().addResult(new AbstractionAtSink(source, returnStmt));
 		}
 		return null;
 	}

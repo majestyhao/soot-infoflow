@@ -3,6 +3,7 @@ package soot.jimple.infoflow;
 import soot.jimple.infoflow.solver.IInfoflowSolver;
 import soot.jimple.infoflow.solver.cfg.IInfoflowCFG;
 import soot.jimple.infoflow.source.ISourceSinkManager;
+import soot.jimple.infoflow.source.data.ISourceSinkDefinitionProvider;
 import soot.jimple.infoflow.taintWrappers.ITaintPropagationWrapper;
 import soot.jimple.infoflow.util.TypeUtils;
 
@@ -21,18 +22,21 @@ public class InfoflowManager {
 	private final ISourceSinkManager sourceSinkManager;
 	private final ITaintPropagationWrapper taintWrapper;
 	private final TypeUtils typeUtils;
+	private final ISourceSinkDefinitionProvider sourceSinkProvider;
 	
-	InfoflowManager(InfoflowConfiguration config,
+	public InfoflowManager(InfoflowConfiguration config,
 			IInfoflowSolver forwardSolver,
 			IInfoflowCFG icfg,
 			ISourceSinkManager sourceSinkManager,
-			ITaintPropagationWrapper taintWrapper) {
+			ITaintPropagationWrapper taintWrapper,
+			ISourceSinkDefinitionProvider sourceSinkProvider) {
 		this.config = config;
 		this.forwardSolver = forwardSolver;
 		this.icfg = icfg;
 		this.sourceSinkManager = sourceSinkManager;
 		this.taintWrapper = taintWrapper;
 		this.typeUtils = new TypeUtils(this);
+		this.sourceSinkProvider = sourceSinkProvider;
 	}
 	
 	/**
@@ -89,6 +93,10 @@ public class InfoflowManager {
 	 */
 	public TypeUtils getTypeUtils() {
 		return this.typeUtils;
+	}
+
+	public ISourceSinkDefinitionProvider getSourceSinkProvider() {
+		return this.sourceSinkProvider;
 	}
 	
 }

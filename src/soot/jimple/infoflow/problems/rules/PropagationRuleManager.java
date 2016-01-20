@@ -24,7 +24,7 @@ public class PropagationRuleManager {
 	protected final InfoflowManager manager;
 	protected final Aliasing aliasing;
 	protected final Abstraction zeroValue;
-	protected final TaintPropagationResults results;
+	//protected final TaintPropagationResults results;
 	private final ITaintPropagationRule[] rules;
 	
 	public PropagationRuleManager(InfoflowManager manager, Aliasing aliasing,
@@ -32,9 +32,10 @@ public class PropagationRuleManager {
 		this.manager = manager;
 		this.aliasing = aliasing;
 		this.zeroValue = zeroValue;
-		this.results = results;
+		//this.results = results;
 		
 		List<ITaintPropagationRule> ruleList = new ArrayList<>();
+		//results = null;
 		
 		ruleList.add(new SourcePropagationRule(manager, aliasing, zeroValue, results));
 		ruleList.add(new SinkPropagationRule(manager, aliasing, zeroValue, results));

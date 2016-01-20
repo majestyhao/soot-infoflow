@@ -28,6 +28,7 @@ import soot.jimple.infoflow.ipc.IIPCManager;
 import soot.jimple.infoflow.nativ.DefaultNativeCallHandler;
 import soot.jimple.infoflow.nativ.INativeCallHandler;
 import soot.jimple.infoflow.source.DefaultSourceSinkManager;
+import soot.jimple.infoflow.source.data.ISourceSinkDefinitionProvider;
 import soot.jimple.infoflow.taintWrappers.ITaintPropagationWrapper;
 import soot.options.Options;
 
@@ -117,6 +118,13 @@ public abstract class AbstractInfoflow implements IInfoflow {
 			List<String> sources, List<String> sinks) {
 		this.computeInfoflow(appPath, libPath, entryPointCreator,
 				new DefaultSourceSinkManager(sources, sinks));
+	}
+	
+	public void computeInfoflow(String appPath, String libPath,
+			IEntryPointCreator entryPointCreator,
+			List<String> sources, List<String> sinks, ISourceSinkDefinitionProvider sourceSinkProvider) {
+		this.computeInfoflow(appPath, libPath, entryPointCreator,
+				new DefaultSourceSinkManager(sources, sinks), sourceSinkProvider);
 	}
 
 	@Override

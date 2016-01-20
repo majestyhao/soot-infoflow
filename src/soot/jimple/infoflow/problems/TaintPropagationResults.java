@@ -26,7 +26,7 @@ public class TaintPropagationResults {
 	 * @param manager A reference to the manager class used during taint
 	 * propagation
 	 */
-	TaintPropagationResults(InfoflowManager manager) {
+	public TaintPropagationResults(InfoflowManager manager) {
 		this.manager = manager;
 	}
 	

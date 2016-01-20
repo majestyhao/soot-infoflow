@@ -61,6 +61,8 @@ import soot.jimple.infoflow.solver.cfg.BackwardsInfoflowCFG;
 import soot.jimple.infoflow.solver.cfg.IInfoflowCFG;
 import soot.jimple.infoflow.solver.fastSolver.InfoflowSolver;
 import soot.jimple.infoflow.source.ISourceSinkManager;
+import soot.jimple.infoflow.source.data.ISourceSinkDefinitionProvider;
+import soot.jimple.infoflow.source.data.SourceSinkDefinition;
 import soot.jimple.infoflow.util.SootMethodRepresentationParser;
 import soot.jimple.infoflow.util.SystemClassHandler;
 import soot.jimple.toolkits.callgraph.ReachableMethods;
@@ -123,14 +125,27 @@ public class Infoflow extends AbstractInfoflow {
 				: pathBuilderFactory;
 	}
 	
+
+	@Override
+	public void computeInfoflow(String appPath, String libPath,
+		IEntryPointCreator entryPointCreator,
+		ISourceSinkManager sourcesSinks) {
+		computeInfoflow(appPath, libPath,
+				entryPointCreator,
+				sourcesSinks,
+				null); 
+	}
+	
 	@Override
 	public void computeInfoflow(String appPath, String libPath,
 			IEntryPointCreator entryPointCreator,
-			ISourceSinkManager sourcesSinks) {
+			ISourceSinkManager sourcesSinks,
+			ISourceSinkDefinitionProvider sourceSinkProvider) {	
 		if (sourcesSinks == null) {
 			logger.error("Sources are empty!");
 			return;
 		}
+		System.out.print("Hao: " + entryPointCreator);
 		
 		initializeSoot(appPath, libPath, entryPointCreator.getRequiredClasses());
 
@@ -139,12 +154,15 @@ public class Infoflow extends AbstractInfoflow {
 		Scene.v().setEntryPoints(Collections.singletonList(entryPointCreator.createDummyMain()));
 		
 		// Run the analysis
-        runAnalysis(sourcesSinks, null);
+        runAnalysis(sourcesSinks, null, sourceSinkProvider);
 	}
+	
+	
 	
 	@Override
 	public void computeInfoflow(String appPath, String libPath, String entryPoint,
 			ISourceSinkManager sourcesSinks) {
+		System.out.print("Hao: ep " + entryPoint);
 		if (sourcesSinks == null) {
 			logger.error("Sources are empty!");
 			return;
@@ -159,6 +177,7 @@ public class Infoflow extends AbstractInfoflow {
 			return;
 		}
 		SootMethod ep = Scene.v().getMethod(entryPoint);
+		
 		if (ep.isConcrete())
 			ep.retrieveActiveBody();
 		else {
@@ -186,16 +205,23 @@ public class Infoflow extends AbstractInfoflow {
 		runAnalysis(sourcesSinks, null);
 	}
 	
+	protected void runAnalysis(final ISourceSinkManager sourcesSinks, final Set<String> additionalSeeds) {
+		runAnalysis(sourcesSinks,  additionalSeeds, null);
+	}
+	
 	/**
 	 * Conducts a taint analysis on an already initialized callgraph
 	 * @param sourcesSinks The sources and sinks to be used
 	 * @param additionalSeeds Additional seeds at which to create A ZERO fact
 	 * even if they are not sources
 	 */
-	private void runAnalysis(final ISourceSinkManager sourcesSinks, final Set<String> additionalSeeds) {
+	private void runAnalysis(final ISourceSinkManager sourcesSinks, final Set<String> additionalSeeds,
+			ISourceSinkDefinitionProvider sourceSinkProvider) {
 		// Clear the data from previous runs
 		maxMemoryConsumption = -1;
 		results = null;
+		
+		System.out.print("Hao");
 				
 		// Some configuration options do not really make sense in combination
 		if (config.getEnableStaticFieldTracking()
@@ -238,7 +264,7 @@ public class Infoflow extends AbstractInfoflow {
 		
 		// Initialize the data flow manager
 		InfoflowManager manager = new InfoflowManager(config, null, iCfg, sourcesSinks,
-				taintWrapper);
+				taintWrapper, sourceSinkProvider);
 		
 		BackwardsInfoflowProblem backProblem = null;
 		InfoflowManager backwardsManager = null;
@@ -247,7 +273,7 @@ public class Infoflow extends AbstractInfoflow {
 		switch (getConfig().getAliasingAlgorithm()) {
 			case FlowSensitive:
 				backwardsManager = new InfoflowManager(config, null,
-						new BackwardsInfoflowCFG(iCfg), sourcesSinks, taintWrapper);
+						new BackwardsInfoflowCFG(iCfg), sourcesSinks, taintWrapper, sourceSinkProvider);
 				backProblem = new BackwardsInfoflowProblem(backwardsManager);
 				backSolver = new InfoflowSolver(backProblem, executor);
 				backSolver.setMemoryManager(memoryManager);
@@ -329,7 +355,7 @@ public class Infoflow extends AbstractInfoflow {
 		}
 		if (sinkCount == 0) {
 			logger.error("No sinks found, aborting analysis");
-			return;
+			//return;
 		}
 		logger.info("Source lookup done, found {} sources and {} sinks.", forwardProblem.getInitialSeeds().size(),
 				sinkCount);
@@ -409,18 +435,8 @@ public class Infoflow extends AbstractInfoflow {
 		if (results == null || results.getResults().isEmpty())
 			logger.warn("No results found.");
 		else for (ResultSinkInfo sink : results.getResults().keySet()) {
-			logger.info("The sink {} in method {} was called with values from the following sources:",
-                    sink, iCfg.getMethodOf(sink.getSink()).getSignature() );
-			for (ResultSourceInfo source : results.getResults().get(sink)) {
-				logger.info("- {} in method {}",source, iCfg.getMethodOf(source.getSource()).getSignature());
-				if (source.getPath() != null) {
-					logger.info("\ton Path: ");
-					for (Unit p : source.getPath()) {
-						logger.info("\t -> " + iCfg.getMethodOf(p));
-						logger.info("\t\t -> " + p);
-					}
-				}
-			}
+			checkSrc(sink, sourceSinkProvider);
+
 		}
 		
 		for (ResultsAvailableHandler handler : onResultsAvailable)
@@ -431,6 +447,47 @@ public class Infoflow extends AbstractInfoflow {
 		
 		maxMemoryConsumption = Math.max(maxMemoryConsumption, getUsedMemory());
 		System.out.println("Maximum memory consumption: " + maxMemoryConsumption / 1E6 + " MB");
+	}
+	
+	public void checkSrc(ResultSinkInfo sink, ISourceSinkDefinitionProvider sourceSinkProvider) {
+		boolean first = true;
+		for (ResultSourceInfo source : results.getResults().get(sink)) {
+			if (checkSrc(source, sourceSinkProvider)) {
+				if (first) {
+					logger.info("The sink {} in method {} was called with values from the following sources:",
+		                    sink, iCfg.getMethodOf(sink.getSink()).getSignature() );
+					first = false;
+				}
+				logger.info("- {} in method {}",source, iCfg.getMethodOf(source.getSource()).getSignature());
+				if (source.getPath() != null) {
+					logger.info("\ton Path: ");
+					for (Unit p : source.getPath()) {
+						logger.info("\t -> " + iCfg.getMethodOf(p));
+						logger.info("\t\t -> " + p);
+					}
+				}
+			}
+		}
+	}
+	
+	public boolean checkSrc(ResultSourceInfo source, ISourceSinkDefinitionProvider sourceSinkProvider) {
+		if (source != null) {
+			//System.out.println("Hao src: " + source.getSourceContext().getStmt());
+			//System.out.println("" + getManager().getSourceSinkManager().
+					//getSourceInfo(source.getSourceContext().getStmt(), getManager().getICFG()));
+			if (source.getSource().containsInvokeExpr()) {
+				SootMethod method = source.getSource().getInvokeExpr().getMethod();
+				//System.out.println("Hao src: " + source.getSourceContext().getStmt().getInvokeExpr().getMethod());
+				for (SourceSinkDefinition am : sourceSinkProvider.getSources()) {
+					if (am.toString().equals(method.getSignature())) {
+						//System.out.println("HEREH " + am.toString());			
+						return true;
+					}
+				}			
+			}		
+		}
+	
+		return false;
 	}
 	
 	/**
@@ -641,5 +698,7 @@ public class Infoflow extends AbstractInfoflow {
 	public Set<Stmt> getCollectedSinks() {
 		return this.collectedSinks;
 	}
+
+
 
 }
